@@ -1,0 +1,10 @@
+{
+  "name": "Achei na Bio | Achadinhos que valem a pena",
+  "short_name": "Achei na Bio",
+  "description": "Achadinhos, ofertas e produtos escolhidos para uma vida mais leve.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f8f6f0",
+  "theme_color": "#17251e",
+  "lang": "pt-BR"
+}
