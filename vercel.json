@@ -23,13 +23,26 @@
       "use": "@vercel/static"
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "source": "/api/health",
+      "destination": "/api/health.js"
     },
     {
-      "handle": "filesystem"
+      "source": "/api/products",
+      "destination": "/api/products.js"
+    },
+    {
+      "source": "/api/import-product",
+      "destination": "/api/import-product.js"
+    },
+    {
+      "source": "/api/auth/mercadolivre",
+      "destination": "/api/auth/mercadolivre/index.js"
+    },
+    {
+      "source": "/api/auth/mercadolivre/callback",
+      "destination": "/api/auth/mercadolivre/callback.js"
     }
   ],
   "headers": [
