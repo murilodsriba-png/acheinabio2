@@ -221,12 +221,19 @@ function localProductFallback(url) {
 }
 
 function fillGeneratedFields(product) {
-  generatedProduct = { ...product, url: product.affiliateUrl || product.url };
+  const signals = [];
+  if (product.rating) signals.push(`Nota média: ${product.rating}/5`);
+  if (product.reviewCount) signals.push(`Avaliações: ${product.reviewCount}`);
+  generatedProduct = {
+    ...product,
+    description: [product.description, signals.join(' · ')].filter(Boolean).join('\n\n'),
+    url: product.affiliateUrl || product.url
+  };
   document.querySelector('#marketplace-name').textContent = product.marketplace;
   document.querySelector('#product-title').value = product.title;
   document.querySelector('#product-category').value = product.category;
   document.querySelector('#product-price').value = product.price || 'Confira na loja';
-  document.querySelector('#product-description').value = product.description || '';
+  document.querySelector('#product-description').value = generatedProduct.description || '';
   document.querySelector('#product-image').value = product.image || '';
   generatedFields.hidden = false;
 }
