@@ -111,8 +111,18 @@
       <div class="admin-columns">
         <form id="product-form" class="product-form">
           <div class="admin-section-title"><div><p class="eyebrow">NOVO ACHADO</p><h3>Importe pelo link de afiliado</h3></div><a id="meli-auth-link" class="auto-badge" href="/api/auth/mercadolivre">Conectar Mercado Livre</a></div>
+          <div class="product-search">
+            <label for="meli-search">Ou pesquise diretamente no Mercado Livre<input id="meli-search" type="search" placeholder="Ex.: organizador de cozinha"></label>
+            <button class="button button-light" type="button" id="search-meli">Buscar produtos</button>
+            <div id="meli-search-results" class="search-results" hidden></div>
+          </div>
           <label for="affiliate-url">Cole o link de afiliado ou ID do anúncio<input id="affiliate-url" type="text" placeholder="https://meli.la/... ou MLB1234567890" required></label>
           <button class="button button-green generate-button" type="button" id="generate-post">Gerar postagem <span>✦</span></button>
+          <div id="affiliate-selection" class="generated-notice" hidden>
+            <b>Esse link reúne vários produtos.</b>
+            <label for="affiliate-item">Escolha o anúncio que deseja publicar<select id="affiliate-item"></select></label>
+            <button class="button button-light" type="button" id="choose-affiliate-item">Usar este produto</button>
+          </div>
           <div id="generated-fields" hidden>
             <div class="generated-notice">✓ Link identificado: <b id="marketplace-name">Marketplace</b></div>
             <label for="product-title">Título da postagem<input id="product-title" type="text" required></label>

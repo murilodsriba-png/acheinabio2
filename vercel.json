@@ -37,6 +37,10 @@
       "destination": "/api/import-product.js"
     },
     {
+      "source": "/api/search-products",
+      "destination": "/api/search-products.js"
+    },
+    {
       "source": "/api/auth/mercadolivre",
       "destination": "/api/auth/mercadolivre/index.js"
     },

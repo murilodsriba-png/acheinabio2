@@ -103,10 +103,19 @@ const draftProductsKey = 'achei-na-bio-drafts';
 const loginModal = document.querySelector('#login-modal');
 const adminModal = document.querySelector('#admin-modal');
 const generatedFields = document.querySelector('#generated-fields');
+const affiliateSelection = document.querySelector('#affiliate-selection');
+const affiliateItemSelect = document.querySelector('#affiliate-item');
 let generatedProduct = null;
 
 function apiUrl(pathname) {
   return window.location.protocol === 'file:' ? `http://localhost:3000${pathname}` : pathname;
+}
+
+async function searchMercadoLivre(query) {
+  const response = await fetch(`${apiUrl('/api/search-products')}?q=${encodeURIComponent(query)}`);
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || 'Não foi possível buscar produtos.');
+  return data.products || [];
 }
 
 document.querySelector('#meli-auth-link').href = apiUrl('/api/auth/mercadolivre');
@@ -156,14 +165,14 @@ function productFromUrl(url) {
   return { title, category, marketplace, url, price: 'Confira na loja', image: '' };
 }
 
-async function importProductFromBackend(affiliateUrl) {
+async function importProductFromBackend(affiliateUrl, selectedItemId = '') {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
   try {
     const response = await fetch(apiUrl('/api/import-product'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: affiliateUrl }),
+      body: JSON.stringify({ url: affiliateUrl, selectedItemId }),
       signal: controller.signal
     });
     const data = await response.json();
@@ -212,7 +221,7 @@ function localProductFallback(url) {
 }
 
 function fillGeneratedFields(product) {
-  generatedProduct = product;
+  generatedProduct = { ...product, url: product.affiliateUrl || product.url };
   document.querySelector('#marketplace-name').textContent = product.marketplace;
   document.querySelector('#product-title').value = product.title;
   document.querySelector('#product-category').value = product.category;
@@ -220,6 +229,15 @@ function fillGeneratedFields(product) {
   document.querySelector('#product-description').value = product.description || '';
   document.querySelector('#product-image').value = product.image || '';
   generatedFields.hidden = false;
+}
+
+function showAffiliateSelection(result) {
+  affiliateItemSelect.innerHTML = result.candidates.map(candidate =>
+    `<option value="${escapeHtml(candidate.itemId)}">${escapeHtml(candidate.title)} — ${escapeHtml(candidate.price)}</option>`
+  ).join('');
+  affiliateSelection.hidden = false;
+  affiliateSelection.dataset.sourceUrl = result.sourceUrl;
+  generatedFields.hidden = true;
 }
 
 function renderAdminProducts() {
@@ -286,6 +304,36 @@ document.querySelector('.logout-admin').addEventListener('click', () => {
   closeAdminModals();
   showToast('Você saiu do painel.');
 });
+document.querySelector('#search-meli').addEventListener('click', async event => {
+  const query = document.querySelector('#meli-search').value.trim();
+  const results = document.querySelector('#meli-search-results');
+  if (!query) return showToast('Digite o que você quer encontrar no Mercado Livre.');
+  const button = event.currentTarget;
+  button.disabled = true;
+  button.textContent = 'Buscando...';
+  try {
+    const products = await searchMercadoLivre(query);
+    results.innerHTML = products.length
+      ? products.map(product => `<button type="button" class="search-result" data-item-id="${escapeHtml(product.itemId)}" data-item-url="${escapeHtml(product.permalink)}"><img src="${escapeHtml(product.image)}" alt=""><span><b>${escapeHtml(product.title)}</b><small>${escapeHtml(product.price)}</small></span></button>`).join('')
+      : '<p class="admin-muted">Nenhum produto encontrado.</p>';
+    results.hidden = false;
+    results.querySelectorAll('.search-result').forEach(result => result.addEventListener('click', async () => {
+      try {
+        const product = await importProductFromBackend(result.dataset.itemUrl, result.dataset.itemId);
+        document.querySelector('#affiliate-url').value = result.dataset.itemUrl;
+        fillGeneratedFields(product);
+        showToast('Produto importado. Para receber comissão, substitua o link pelo seu link de afiliado antes de publicar.');
+      } catch (error) {
+        showToast(error.message || 'Não foi possível importar este produto.');
+      }
+    }));
+  } catch (error) {
+    showToast(error.message || 'Não foi possível buscar produtos.');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Buscar produtos';
+  }
+});
 document.querySelector('#generate-post').addEventListener('click', async () => {
   const url = document.querySelector('#affiliate-url').value.trim();
   if (!url) return showToast('Cole o link de afiliado para publicar.');
@@ -294,8 +342,15 @@ document.querySelector('#generate-post').addEventListener('click', async () => {
   button.firstChild.textContent = 'Importando... ';
   try {
     const importedProduct = await importProductFromBackend(url);
-    fillGeneratedFields(importedProduct);
-    showToast(generatedProduct.importWarning || 'Produto importado. Revise os dados antes de publicar.');
+    if (importedProduct.type === 'selection') {
+      if (!importedProduct.candidates.length) throw new Error('O perfil não contém anúncios disponíveis para importação.');
+      showAffiliateSelection(importedProduct);
+      showToast('Link de perfil reconhecido. Escolha um produto para continuar.');
+    } else {
+      affiliateSelection.hidden = true;
+      fillGeneratedFields(importedProduct);
+      showToast(generatedProduct.importWarning || 'Produto importado. Revise os dados antes de publicar.');
+    }
   } catch (error) {
     try {
       generatedProduct = localProductFallback(url);
@@ -313,6 +368,25 @@ document.querySelector('#generate-post').addEventListener('click', async () => {
   } finally {
     button.disabled = false;
     button.firstChild.textContent = 'Gerar postagem ';
+  }
+});
+document.querySelector('#choose-affiliate-item').addEventListener('click', async event => {
+  const sourceUrl = affiliateSelection.dataset.sourceUrl;
+  const selectedItemId = affiliateItemSelect.value;
+  if (!sourceUrl || !selectedItemId) return showToast('Escolha um produto para continuar.');
+  const button = event.currentTarget;
+  button.disabled = true;
+  button.textContent = 'Importando produto...';
+  try {
+    const product = await importProductFromBackend(sourceUrl, selectedItemId);
+    affiliateSelection.hidden = true;
+    fillGeneratedFields(product);
+    showToast('Produto escolhido e importado. Revise antes de publicar.');
+  } catch (error) {
+    showToast(error.message || 'Não foi possível importar o produto escolhido.');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Usar este produto';
   }
 });
 document.querySelector('#product-form').addEventListener('submit', event => event.preventDefault());
